@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Yummy!</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <style>
+    /* ✅ 수정된 색상 팔레트 (😋 테마) */
+    :root {
+      /* 배경: 아주 부드러운 크림 옐로우 그라데이션 */
+      --bg1: #FFF8E1; /* Amber 50 tints */
+      --bg2: #FFFDE7; 
+      
+      /* 카드 배경: 반투명 흰색 유지 */
+      --card: #ffffffdd;
+      
+      /* Yes 버튼: 식욕을 돋우는 따뜻한 오렌지/레드 */
+      --yes: #FF6B35; 
+      --yesHover: #E85A2A;
+      
+      /* 기본 텍스트 색상: 따뜻한 다크 브라운 */
+      --text-color: #4A3F35;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at top, var(--bg2), var(--bg1));
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      overflow: hidden;
+      padding: 16px;
+      color: var(--text-color); /* 전체 텍스트 색상 적용 */
+    }
+
+    #confettiCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    .card {
+      width: min(720px, 92vw);
+      padding: 30px 22px;
+      background: var(--card);
+      backdrop-filter: blur(12px); /* 블러 효과 약간 강화 */
+      border-radius: 24px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(66, 32, 6, 0.1); /* 그림자도 따뜻한 톤으로 */
+      border: 1px solid rgba(255,255,255,0.4);
+    }
+
+    /* ✅ 수정된 부분: 이모지 스타일링 */
+    .art-emoji {
+      font-size: clamp(80px, 15vw, 120px); /* 반응형 크기 조절 */
+      display: block;
+      margin: 0 auto 10px;
+      /* 이모지에 부드러운 그림자 추가 */
+      filter: drop-shadow(0 8px 12px rgba(0,0,0,.1));
+      user-select: none;
+    }
+
+    h1 {
+      font-size: clamp(24px, 5vw, 42px);
+      margin: 12px 0 24px;
+      font-weight: 800;
+    }
+
+    .button-zone {
+      position: relative;
+      width: min(520px, 92%);
+      height: 150px;
+      margin: 0 auto;
+      touch-action: none;
+    }
+
+    button {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 16px 28px;
+      font-size: 20px;
+      font-weight: 800;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(0,0,0,.1);
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .12s ease, background .12s ease, box-shadow .12s ease;
+    }
+
+    button:active {
+        box-shadow: 0 4px 12px rgba(0,0,0,.1);
+    }
+
+    #yesBtn {
+      left: 18%;
+      background: var(--yes);
+      color: #fff;
+    }
+    #yesBtn:hover { background: var(--yesHover); }
+
+    #noBtn {
+      left: 62%;
+      background: #F3F4F6; /* 따뜻한 느낌의 밝은 회색 */
+      color: var(--text-color);
+    }
+
+    .result {
+      display: none;
+      margin-top: 24px;
+      animation: pop .4s cubic-bezier(0.34, 1.56, 0.64, 1); /* 통통 튀는 애니메이션 */
+    }
+
+    .result h2 {
+      font-size: clamp(28px, 4.5vw, 44px);
+      margin: 10px 0;
+      color: var(--yes); /* 결과 텍스트도 오렌지색 포인트 */
+    }
+
+    .fireworks {
+      width: min(380px, 90vw);
+      margin: 10px auto 0;
+      display: block;
+      border-radius: 12px;
+    }
+
+    @keyframes pop {
+      from { transform: scale(.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="confettiCanvas"></canvas>
+
+  <main class="card">
+    <div class="art-emoji">😋</div>
+
+    <h1>Wanna grab something yummy together?</h1>
+
+    <section class="button-zone" id="zone">
+      <button id="yesBtn">Yes!</button>
+      <button id="noBtn">No</button>
+    </section>
+
+    <section class="result" id="result">
+      <h2>YUM! Let's go eat! 🍴🧡</h2>
+      <img
+        class="fireworks"
+        src="https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif"
+        alt="Fireworks"
+      />
+    </section>
+  </main>
+
+  <script>
+    const zone = document.getElementById("zone");
+    const yesBtn = document.getElementById("yesBtn");
+    const noBtn = document.getElementById("noBtn");
+    const result = document.getElementById("result");
+    const confettiCanvas = document.getElementById("confettiCanvas");
+
+    function resizeConfettiCanvas() {
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      confettiCanvas.width = Math.floor(window.innerWidth * dpr);
+      confettiCanvas.height = Math.floor(window.innerHeight * dpr);
+    }
+    resizeConfettiCanvas();
+    window.addEventListener("resize", resizeConfettiCanvas);
+    
+    const confettiInstance = confetti.create(confettiCanvas, {
+      resize: false,
+      useWorker: true
+    });
+
+    // ✅ 폭죽 색상을 테마에 맞게 난색 계열로 설정
+    const warmColors = ['#FF6B35', '#FFC107', '#FF9800', '#FFFFFF', '#FFE0B2'];
+
+    function fullScreenConfetti() {
+      const end = Date.now() + 1600;
+
+      (function frame() {
+        confettiInstance({
+          particleCount: 12,
+          spread: 90,
+          startVelocity: 45,
+          ticks: 180,
+          origin: { x: Math.random(), y: Math.random() * 0.3 },
+          colors: warmColors // 색상 적용
+        });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      })();
+
+      setTimeout(() => {
+        confettiInstance({
+          particleCount: 250,
+          spread: 150,
+          startVelocity: 65,
+          origin: { x: 0.5, y: 0.6 },
+          colors: warmColors // 색상 적용
+        });
+      }, 300);
+    }
+
+    /* ---------- YES BUTTON GROWS ---------- */
+    let yesScale = 1;
+    function growYes() {
+      yesScale = Math.min(2.5, yesScale + 0.15); // 조금 더 빠르게 커지도록 수정
+      yesBtn.style.transform = `translateY(-50%) scale(${yesScale})`;
+    }
+
+    /* ---------- NO BUTTON RUNS AWAY ---------- */
+    function moveNo(px, py) {
+      const z = zone.getBoundingClientRect();
+      const b = noBtn.getBoundingClientRect();
+
+      let dx = (b.left + b.width / 2) - px;
+      let dy = (b.top + b.height / 2) - py;
+      let mag = Math.hypot(dx, dy) || 1;
+      dx /= mag;
+      dy /= mag;
+
+      // 이동 거리 약간 증가 (150 -> 180)
+      let newLeft = (b.left - z.left) + dx * 180;
+      let newTop  = (b.top - z.top) + dy * 180;
+
+      // clamp 대신 간단한 min/max로 영역 제한
+      newLeft = Math.max(0, Math.min(z.width - b.width, newLeft));
+      newTop  = Math.max(0, Math.min(z.height - b.height, newTop));
+
+      noBtn.style.left = newLeft + "px";
+      noBtn.style.top = newTop + "px";
+      noBtn.style.transform = "none";
+
+      growYes();
+    }
+
+    // 감지 거리 약간 증가 (140 -> 160)
+    zone.addEventListener("pointermove", e => {
+      const b = noBtn.getBoundingClientRect();
+      const d = Math.hypot(
+        (b.left + b.width / 2) - e.clientX,
+        (b.top + b.height / 2) - e.clientY
+      );
+      if (d < 160) moveNo(e.clientX, e.clientY);
+    });
+    
+    // 모바일 터치 대응 강화
+    zone.addEventListener("touchstart", e => {
+        const touch = e.touches[0];
+        const b = noBtn.getBoundingClientRect();
+        const d = Math.hypot(
+            (b.left + b.width / 2) - touch.clientX,
+            (b.top + b.height / 2) - touch.clientY
+        );
+        if (d < 160) {
+            moveNo(touch.clientX, touch.clientY);
+            e.preventDefault(); // 터치 시 스크롤 방지 및 즉각 반응
+        }
+    }, { passive: false });
+
+
+    noBtn.addEventListener("click", e => e.preventDefault());
+
+    /* ---------- YES CLICK ---------- */
+    yesBtn.addEventListener("click", () => {
+      zone.style.display = "none";
+      result.style.display = "block";
+      resizeConfettiCanvas();
+      fullScreenConfetti();
+    });
+  </script>
+</body>
+</html>
